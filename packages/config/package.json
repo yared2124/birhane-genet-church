@@ -1,0 +1,7 @@
+{
+  "name": "@repo/config",
+  "version": "1.0.0",
+  "main": "feature-flags.ts",
+  "types": "feature-flags.ts",
+  "private": true
+}
