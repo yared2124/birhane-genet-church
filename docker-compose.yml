@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # -------------------- PostgreSQL Database --------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: birhane_genet_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 212121
+      POSTGRES_DB: church_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - church_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d church_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------- Redis (Cache & Queue) --------------------
+  redis:
+    image: redis:7-alpine
+    container_name: birhane_genet_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - church_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------- MinIO (S3-compatible File Storage) --------------------
+  minio:
+    image: minio/minio:latest
+    container_name: birhane_genet_minio
+    ports:
+      - "9000:9000"   # API port
+      - "9001:9001"   # Web Console port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    networks:
+      - church_network
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+# -------------------- Volumes (Persist data across restarts) --------------------
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+
+# -------------------- Networks --------------------
+networks:
+  church_network:
+    driver: bridge

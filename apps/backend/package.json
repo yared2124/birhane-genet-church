@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +32,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@repo/eslint-config": "^1.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -37,6 +40,7 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^26.2.0",
     "@types/puppeteer": "^5.4.7",
+    "eslint": "^10.8.1",
     "nodemon": "^3.1.14",
     "prisma": "^7.9.1",
     "ts-node": "^10.9.2",

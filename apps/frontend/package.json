@@ -6,6 +6,8 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint": "next lint"
   },
   "dependencies": {
@@ -27,10 +29,12 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@repo/eslint-config": "^1.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.5.4",
+    "eslint": "^10.8.1",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.19",
     "typescript": "^5"
