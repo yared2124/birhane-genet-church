@@ -4,450 +4,316 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-// ============ ENUMS ============
-enum UserRole {
-  SuperAdmin
-  Sebeka
-  Priest
-  Cashier
-  PropertyMgr
-  Registrar
-  YouthCoord
-  Member
+// ==============================
+// ENUMS
+// ==============================
+enum Role {
+  SUPER_ADMIN
+  SEBEKA_GUBAE
+  PRIEST
+  CASHIER
+  PROPERTY_MANAGER
+  REGISTRAR
+  YOUTH_COORDINATOR
+  MEMBER
 }
 
 enum TransactionStatus {
-  Draft
-  Pending
-  Approved
-  Rejected
-  Paid
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
 }
 
 enum MemberStatus {
-  Active
-  Deceased
-  Transferred
-  Excommunicated
-}
-
-enum MaritalStatus {
-  Single
-  Married
-  Widowed
-  Divorced
+  ACTIVE
+  DECEASED
+  TRANSFERRED
+  EXCOMMUNICATED
 }
 
 enum EmploymentType {
-  FullTime
-  Contract
-  Volunteer
+  FULL_TIME
+  CONTRACT
+  VOLUNTEER
 }
 
-enum PaymentStatus {
-  Paid
-  Overdue
-  Partial
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  WIDOWED
+  DIVORCED
 }
 
-// ============ USERS ============
+// ==============================
+// CORE TABLES
+// ==============================
+
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  passwordHash  String
-  fullName      String
-  role          UserRole @default(Member)
-  phone         String?
-  profileImage  String?
-  isActive      Boolean  @default(true)
-  lastLogin     DateTime?
-  employeeId    String?  @unique
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(MEMBER)
+  employeeId   String?  @unique
+  isActive     Boolean  @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  employee      Employee? @relation(fields: [employeeId], references: [id])
-  auditLogs     AuditLog[]
-  transactions  Transaction[] @relation("PreparedBy")
-  approvals     Transaction[] @relation("ApprovedBy")
+  employee           Employee?           @relation("UserEmployee", fields: [employeeId], references: [id])
+  transactions       Transaction[]       @relation("PreparedBy")
+  approved           Transaction[]       @relation("ApprovedBy")
+  auditLogs          AuditLog[]
   certificateRequests CertificateRequest[] @relation("ApprovedBy")
 
   @@map("users")
 }
 
-// ============ EMPLOYEES ============
 model Employee {
-  id              String   @id @default(cuid())
-  fullName        String
-  christianName   String?
-  jobTitle        String   // Priest, Deacon, Choir, Guard, Accountant, etc.
-  employmentType  EmploymentType @default(FullTime)
-  hireDate        DateTime
-  salary          Float?
-  phone           String
-  maritalStatus   MaritalStatus @default(Single)
-  childrenCount   Int      @default(0)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String         @id @default(cuid())
+  fullName       String
+  christianName  String?
+  jobTitle       String
+  employmentType EmploymentType @default(FULL_TIME)
+  hireDate       DateTime
+  salary         Float?
+  phone          String?
+  maritalStatus  MaritalStatus?
+  childrenCount  Int?
+  userId         String?        @unique
 
-  // Relations
-  user            User?    @relation(fields: [userId], references: [id])
-  userId          String?  @unique
-  confessionChildren Member[] @relation("Confessor")
-  performedBaptisms Baptism[] @relation("PerformedBy")
-  performedMarriages Marriage[] @relation("PerformedBy")
-  certificateRequests CertificateRequest[] @relation("RequestedBy")
+  // Relations (no fields/references – defined on User)
+  user            User?          @relation("UserEmployee")
+  priestMembers   Member[]       @relation("Confessor")
+  performedBaptisms Baptism[]    @relation("PerformedBy")
+  performedMarriages Marriage[]  @relation("PerformedBy")
+  requested       CertificateRequest[] @relation("RequestedBy")
 
   @@map("employees")
 }
 
-// ============ FAMILIES ============
 model Family {
-  id                  String   @id @default(cuid())
-  familyCode          String   @unique
-  headOfHouseholdId   String
-  isActive            Boolean  @default(true)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  familyCode         String   @unique
+  headOfHouseholdId  String   @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // Relations
-  headOfHousehold     Member   @relation("HeadOfHousehold", fields: [headOfHouseholdId], references: [id])
-  members             Member[]
-  transactions        Transaction[]
-  rentPayments        RentPayment[]
+  head         Member       @relation("HeadOfFamily", fields: [headOfHouseholdId], references: [id])
+  members      Member[]     @relation("FamilyMembers")
+  transactions Transaction[]
 
   @@map("families")
 }
 
-// ============ MEMBERS ============
 model Member {
-  id                    String   @id @default(cuid())
-  firstName             String
-  lastName              String
-  christianName         String?
-  gender                String
-  phone                 String?
-  address               String?
-  job                   String?
-  birthDate             DateTime?
-  maritalStatus         MaritalStatus @default(Single)
-  spouseName            String?
-  childrenCount         Int      @default(0)
-  memberStatus          MemberStatus @default(Active)
-  isHeadOfHousehold     Boolean  @default(false)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  deletedAt             DateTime?
+  id                 String         @id @default(cuid())
+  firstName          String
+  lastName           String
+  christianName      String?
+  gender             String
+  phone              String?
+  address            String?
+  job                String?
+  maritalStatus      MaritalStatus?
+  childrenCount      Int?
+  isHeadOfHousehold  Boolean        @default(false)
+  familyId           String?
+  confessorPriestId  String?
+  memberStatus       MemberStatus   @default(ACTIVE)
+  deletedAt          DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   // Relations
-  familyId              String?
-  family                Family?  @relation(fields: [familyId], references: [id])
-  headOfHouseholdFor    Family?  @relation("HeadOfHousehold")
-  confessorPriestId     String?
-  confessorPriest       Employee? @relation("Confessor", fields: [confessorPriestId], references: [id])
-  baptisms              Baptism[]
-  marriages             Marriage[] @relation("Groom")
-  marriagesAsBride      Marriage[] @relation("Bride")
-  deceased              Deceased?
-  notifications         Notification[]
-  transactions          Transaction[]
+  family         Family?          @relation("FamilyMembers", fields: [familyId], references: [id])
+  confessor      Employee?        @relation("Confessor", fields: [confessorPriestId], references: [id])
+  familyHead     Family?          @relation("HeadOfFamily")
+  transactions   Transaction[]
+  baptisms       Baptism[]        @relation("Child")
+  marriagesGroom Marriage[]       @relation("Groom")
+  marriagesBride Marriage[]       @relation("Bride")
+  deceased       Deceased?
 
   @@index([familyId])
   @@index([confessorPriestId])
-  @@index([deletedAt])
   @@map("members")
 }
 
-// ============ TRANSACTIONS (Financial) ============
 model Transaction {
   id               String            @id @default(cuid())
-  transactionType  String            // Income, Expense
-  category         String            // Tithe, Rent, Salary, Construction, etc.
+  type             String
+  category         String
   amount           Float
   description      String?
   transactionDate  DateTime          @default(now())
-  status           TransactionStatus @default(Draft)
+  familyId         String?
+  memberId         String?
+  status           TransactionStatus @default(DRAFT)
+  preparedById     String
+  approvedById     String?
+  approvedAt       DateTime?
+  deletedAt        DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   // Relations
-  familyId         String?
-  family           Family?           @relation(fields: [familyId], references: [id])
-  memberId         String?
-  member           Member?           @relation(fields: [memberId], references: [id])
-  preparedById     String
-  preparedBy       User              @relation("PreparedBy", fields: [preparedById], references: [id])
-  approvedById     String?
-  approvedBy       User?             @relation("ApprovedBy", fields: [approvedById], references: [id])
-  approvedAt       DateTime?
-  rentPayment      RentPayment?
-  stockMovements   StockMovement[]
-  auditLogs        AuditLog[]
+  family     Family? @relation(fields: [familyId], references: [id])
+  member     Member? @relation(fields: [memberId], references: [id])
+  preparedBy User   @relation("PreparedBy", fields: [preparedById], references: [id])
+  approvedBy User?  @relation("ApprovedBy", fields: [approvedById], references: [id])
 
   @@index([familyId])
   @@index([status])
-  @@index([transactionDate])
   @@map("transactions")
 }
 
-// ============ RENTALS ============
-model RentalHouse {
-  id            String   @id @default(cuid())
-  houseNumber   String   @unique
-  houseType     String   // Shop, Residence, Hall
-  monthlyRent   Float
-  status        String   @default("Vacant") // Vacant, Occupied
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
+model Baptism {
+  id               String   @id @default(cuid())
+  childFullName    String
+  childGender      String
+  birthDate        DateTime
+  christianName    String?
+  fatherName       String
+  motherName       String
+  godfatherName    String?
+  godmotherName    String?
+  parentPhone      String?
+  baptismDate      DateTime
+  performedByPriestId String
+  childMemberId    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  tenants       Tenant[]
+  performedBy      Employee @relation("PerformedBy", fields: [performedByPriestId], references: [id])
+  childMember      Member?  @relation("Child", fields: [childMemberId], references: [id])
 
-  @@index([deletedAt])
-  @@map("rental_houses")
+  @@map("baptisms")
 }
 
-model Tenant {
+model Marriage {
   id              String   @id @default(cuid())
-  fullName        String
-  phone           String
-  rentStartDate   DateTime
-  rentEndDate     DateTime?
-  isActive        Boolean  @default(true)
+  groomName       String
+  brideName       String
+  groomPhone      String?
+  bridePhone      String?
+  marriageDate    DateTime
+  performedByPriestId String
+  groomConfessorId String?
+  brideConfessorId String?
+  groomMemberId   String?
+  brideMemberId   String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   // Relations
-  houseId         String
-  house           RentalHouse @relation(fields: [houseId], references: [id])
-  rentPayments    RentPayment[]
+  performedBy      Employee @relation("PerformedBy", fields: [performedByPriestId], references: [id])
+  groomMember      Member?  @relation("Groom", fields: [groomMemberId], references: [id])
+  brideMember      Member?  @relation("Bride", fields: [brideMemberId], references: [id])
+
+  @@map("marriages")
+}
+
+model Deceased {
+  id               String   @id @default(cuid())
+  memberId         String   @unique
+  deathDate        DateTime
+  burialFeePaid    Boolean  @default(false)
+  familyPhone      String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@map("deceased")
+}
+
+model CertificateRequest {
+  id                 String   @id @default(cuid())
+  serviceType        String   // "BAPTISM" or "MARRIAGE"
+  referenceId        String   // ID of the Baptism or Marriage
+  requestedByPriestId String
+  status             String   @default("PENDING")
+  approvedById       String?
+  approvedAt         DateTime?
+  certificatePdfPath String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  requestedBy   Employee @relation("RequestedBy", fields: [requestedByPriestId], references: [id])
+  approvedBy    User?    @relation("ApprovedBy", fields: [approvedById], references: [id])
+
+  @@map("certificate_requests")
+}
+
+model RentalHouse {
+  id            String   @id @default(cuid())
+  houseNumber   String   @unique
+  houseType     String
+  monthlyRent   Float
+  status        String   @default("VACANT")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  tenant        Tenant?  @relation("HouseTenant") // No fields/references here – foreign key is on Tenant
+
+  @@map("rental_houses")
+}
+
+model Tenant {
+  id            String   @id @default(cuid())
+  fullName      String
+  phone         String
+  houseId       String   @unique
+  rentStartDate DateTime
+  rentEndDate   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  house        RentalHouse  @relation("HouseTenant", fields: [houseId], references: [id])
+  rentPayments RentPayment[]
 
   @@map("tenants")
 }
 
 model RentPayment {
-  id             String         @id @default(cuid())
-  paymentPeriod  String         // e.g., "2024-01"
-  amount         Float
-  paidDate       DateTime       @default(now())
-  status         PaymentStatus  @default(Paid)
-  isOverdue      Boolean        @default(false)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id            String   @id @default(cuid())
+  tenantId      String
+  paymentPeriod String
+  amount        Float
+  paidDate      DateTime @default(now())
+  status        String   @default("PAID")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
-  tenantId       String
-  tenant         Tenant         @relation(fields: [tenantId], references: [id])
-  transactionId  String?        @unique
-  transaction    Transaction?   @relation(fields: [transactionId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  @@index([tenantId])
-  @@index([isOverdue])
   @@map("rent_payments")
 }
 
-// ============ ASSETS & INVENTORY ============
-model Asset {
-  id            String   @id @default(cuid())
-  name          String
-  category      String   // Liturgical, Furniture, Vehicle, Equipment
-  quantity      Int      @default(1)
-  purchasePrice Float?
-  currentValue  Float?
-  usagePurpose  String?
-  assignedTo    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  deletedAt     DateTime?
-
-  @@index([deletedAt])
-  @@map("assets")
-}
-
-model InventoryItem {
-  id            String   @id @default(cuid())
-  name          String
-  unit          String   // Kg, Liters, Pieces, Box
-  currentStock  Float    @default(0)
-  reorderLevel  Float    @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  movements     StockMovement[]
-
-  @@map("inventory_items")
-}
-
-model StockMovement {
-  id              String   @id @default(cuid())
-  movementType    String   // IN, OUT
-  quantity        Float
-  description     String?
-  createdAt       DateTime @default(now())
-
-  // Relations
-  itemId          String
-  item            InventoryItem @relation(fields: [itemId], references: [id])
-  transactionId   String?
-  transaction     Transaction? @relation(fields: [transactionId], references: [id])
-
-  @@index([itemId])
-  @@map("stock_movements")
-}
-
-// ============ SACRAMENTS ============
-model Baptism {
-  id                String   @id @default(cuid())
-  childFullName     String
-  childGender       String
-  birthDate         DateTime
-  christianName     String
-  fatherName        String
-  motherName        String
-  godfatherName     String?
-  godmotherName     String?
-  parentPhone       String
-  baptismDate       DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Relations
-  confessorPriestId String?
-  confessorPriest   Employee? @relation(fields: [confessorPriestId], references: [id])
-  performedByPriestId String
-  performedBy       Employee  @relation("PerformedBy", fields: [performedByPriestId], references: [id])
-  certificate       CertificateRequest?
-
-  @@index([baptismDate])
-  @@map("baptisms")
-}
-
-model Marriage {
-  id                String   @id @default(cuid())
-  groomName         String
-  brideName         String
-  groomPhone        String
-  bridePhone        String
-  marriageDate      DateTime @default(now())
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Relations
-  groomConfessorId  String?
-  groomConfessor    Employee? @relation(fields: [groomConfessorId], references: [id])
-  brideConfessorId  String?
-  brideConfessor    Employee? @relation(fields: [brideConfessorId], references: [id])
-  performedByPriestId String
-  performedBy       Employee  @relation("PerformedBy", fields: [performedByPriestId], references: [id])
-  certificate       CertificateRequest?
-
-  @@index([marriageDate])
-  @@map("marriages")
-}
-
-model Deceased {
-  id                String   @id @default(cuid())
-  fullName          String
-  christianName     String?
-  gender            String
-  birthDate         DateTime?
-  deathDate         DateTime @default(now())
-  familyPhone       String?
-  isChurchMember    Boolean  @default(true)
-  burialFeePaid     Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Relations
-  memberId          String?  @unique
-  member            Member?  @relation(fields: [memberId], references: [id])
-  confessorPriestId String?
-  confessorPriest   Employee? @relation(fields: [confessorPriestId], references: [id])
-
-  @@index([deathDate])
-  @@map("deceased")
-}
-
-// ============ CERTIFICATES ============
-model CertificateRequest {
-  id                String   @id @default(cuid())
-  serviceType       String   // Baptism, Marriage
-  referenceId       String   // ID from Baptism or Marriage table
-  status            String   @default("Pending") // Pending, Approved, Rejected
-  certificateUrl    String?  // S3/MinIO path
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  // Relations
-  requestedByPriestId String
-  requestedBy       Employee  @relation("RequestedBy", fields: [requestedByPriestId], references: [id])
-  approvedByUserId  String?
-  approvedBy        User?     @relation("ApprovedBy", fields: [approvedByUserId], references: [id])
-  approvedAt        DateTime?
-
-  @@index([status])
-  @@map("certificate_requests")
-}
-
-// ============ CHURCH ARCHIVES ============
-model ChurchArchive {
-  id              String   @id @default(cuid())
-  title           String
-  description     String?
-  archiveType     String   // Photo, Video, Document, Audio
-  fileUrl         String   // S3/MinIO path
-  eventDate       DateTime?
-  isPublished     Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  uploadedById    String
-  uploadedBy      User     @relation(fields: [uploadedById], references: [id])
-
-  @@index([archiveType])
-  @@map("church_archives")
-}
-
-// ============ NOTIFICATIONS ============
-model Notification {
-  id              String   @id @default(cuid())
-  title           String
-  message         String
-  type            String   // Info, Warning, Success
-  isRead          Boolean  @default(false)
-  createdAt       DateTime @default(now())
-
-  // Relations
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([isRead])
-  @@map("notifications")
-}
-
-// ============ AUDIT LOGS ============
 model AuditLog {
-  id              String   @id @default(cuid())
-  tableName       String
-  recordId        String
-  oldValue        Json?
-  newValue        Json?
-  action          String   // CREATE, UPDATE, DELETE
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  tableName      String
+  recordId       String
+  oldValue       Json?
+  newValue       Json?
+  changedByUserId String
+  changedAt      DateTime @default(now())
 
   // Relations
-  changedByUserId String
-  changedBy       User     @relation(fields: [changedByUserId], references: [id])
+  changedBy User @relation(fields: [changedByUserId], references: [id])
 
-  @@index([tableName])
-  @@index([createdAt])
   @@map("audit_logs")
 }
