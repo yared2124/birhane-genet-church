@@ -1,8 +1,4 @@
-/**
- * Shared TypeScript types for both frontend and backend.
- * Ensures type safety across the entire monorepo.
- */
-
+// Shared TypeScript types for frontend and backend
 export enum Role {
   SUPER_ADMIN = "SUPER_ADMIN",
   SEBEKA_GUBAE = "SEBEKA_GUBAE",
@@ -41,25 +37,7 @@ export interface User {
   email: string;
   role: Role;
   isActive: boolean;
-  lastLogin?: string;
-  employee?: Employee;
-}
-
-export interface Employee {
-  id: string;
-  fullName: string;
-  christianName?: string;
-  jobTitle: string;
-  phone?: string;
-}
-
-export interface Family {
-  id: string;
-  familyCode: string;
-  headOfHouseholdId: string;
-  head?: Member;
-  members?: Member[];
-  createdAt: string;
+  lastLogin?: Date;
 }
 
 export interface Member {
@@ -67,86 +45,50 @@ export interface Member {
   firstName: string;
   lastName: string;
   christianName?: string;
-  gender: "Male" | "Female";
+  gender: string;
   phone?: string;
   address?: string;
   job?: string;
-  maritalStatus?: MaritalStatus;
+  maritalStatus?: string;
   childrenCount?: number;
   isHeadOfHousehold: boolean;
   familyId?: string;
-  family?: Family;
   confessorPriestId?: string;
-  confessor?: Employee;
   memberStatus: MemberStatus;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Family {
+  id: string;
+  familyCode: string;
+  headOfHouseholdId: string;
+  members: Member[];
+  createdAt: Date;
 }
 
 export interface Transaction {
   id: string;
-  type: "INCOME" | "EXPENSE";
+  type: string;
   category: string;
   amount: number;
   description?: string;
-  transactionDate: string;
+  transactionDate: Date;
   status: TransactionStatus;
   familyId?: string;
-  family?: Family;
   memberId?: string;
-  member?: Member;
   preparedById: string;
-  preparedBy?: User;
   approvedById?: string;
-  approvedBy?: User;
-  approvedAt?: string;
-}
-
-export interface CertificateRequest {
-  id: string;
-  serviceType: "BAPTISM" | "MARRIAGE";
-  referenceId: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  certificatePdfPath?: string;
-  createdAt: string;
-  requestedBy?: Employee;
-  approvedBy?: User;
+  approvedAt?: Date;
 }
 
 export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
   data: T;
+  message?: string;
   pagination?: {
     page: number;
     limit: number;
     total: number;
     totalPages: number;
   };
-}
-
-export interface DashboardStats {
-  totalMembers: number;
-  occupiedHouses: number;
-  pendingApprovals: number;
-  recentBaptisms: Baptism[];
-  weeklyIncome: number;
-}
-
-export interface Baptism {
-  id: string;
-  childFullName: string;
-  childGender: "Male" | "Female";
-  birthDate: string;
-  christianName?: string;
-  fatherName: string;
-  motherName: string;
-  godfatherName?: string;
-  godmotherName?: string;
-  parentPhone?: string;
-  baptismDate: string;
-  performedByPriestId: string;
-  performedBy?: Employee;
-  childMemberId?: string;
-  childMember?: Member;
 }
