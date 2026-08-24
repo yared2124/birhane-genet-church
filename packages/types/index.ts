@@ -25,6 +25,13 @@ export enum MemberStatus {
   EXCOMMUNICATED = "EXCOMMUNICATED",
 }
 
+export enum MaritalStatus {
+  SINGLE = "SINGLE",
+  MARRIED = "MARRIED",
+  WIDOWED = "WIDOWED",
+  DIVORCED = "DIVORCED",
+}
+
 export interface User {
   id: string;
   email: string;
