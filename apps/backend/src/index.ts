@@ -1,53 +1,61 @@
+/**
+ * MAIN SERVER ENTRY POINT
+ * Initializes Express and connects all modules.
+ */
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
+import cookieParser from "cookie-parser";
+import { env } from "./config/environment.js";
 
-// Import route modules
-import authRoutes from "./routes/auth.routes";
-import memberRoutes from "./routes/members.routes";
-import familyRoutes from "./routes/families.routes";
-import financeRoutes from "./routes/finances.routes";
-import rentalRoutes from "./routes/rentals.routes";
-import certificateRoutes from "./routes/certificates.routes";
-import reportRoutes from "./routes/reports.routes";
-
-// Load environment variables
-dotenv.config();
+// Import routes (barrel exports)
+import authRoutes from "./modules/auth/auth.routes.js";
+import memberRoutes from "./modules/members/member.routes.js";
+import financeRoutes from "./modules/finances/finance.routes.js";
+import rentalRoutes from "./modules/rentals/rental.routes.js";
+import sacramentRoutes from "./modules/sacraments/sacrament.routes.js";
+import certificateRoutes from "./modules/certificates/certificate.routes.js";
+import reportRoutes from "./modules/reports/report.routes.js";
 
 const app = express();
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 5000;
 
-// -------------------- Middleware --------------------
-app.use(helmet()); // Security headers
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true,
-  }),
-);
-app.use(express.json({ limit: "10mb" })); // Parse JSON bodies
-app.use(morgan("dev")); // Logging
+// Middleware
+app.use(helmet());
+app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(morgan("dev"));
 
-// -------------------- Health Check --------------------
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+// Health check
+app.get("/health", (_, res) => {
+  res.status(200).json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    service: "Birhane Genet Church API",
+  });
 });
 
-// -------------------- API Routes --------------------
+// API Routes
 const API_PREFIX = "/api/v1";
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/members`, memberRoutes);
-app.use(`${API_PREFIX}/families`, familyRoutes);
 app.use(`${API_PREFIX}/finances`, financeRoutes);
 app.use(`${API_PREFIX}/rentals`, rentalRoutes);
+app.use(`${API_PREFIX}/sacraments`, sacramentRoutes);
 app.use(`${API_PREFIX}/certificates`, certificateRoutes);
 app.use(`${API_PREFIX}/reports`, reportRoutes);
 
-// -------------------- Error Handling Middleware --------------------
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+  });
+});
+
+// Global Error Handler
 app.use(
   (
     err: any,
@@ -57,22 +65,18 @@ app.use(
   ) => {
     console.error("Unhandled error:", err);
     res.status(err.status || 500).json({
+      success: false,
       message: err.message || "Internal Server Error",
-      ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+      ...(env.NODE_ENV === "development" && { stack: err.stack }),
     });
   },
 );
 
-// -------------------- Start Server --------------------
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Start Server
+app.listen(env.PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${env.PORT}`);
   console.log(`📡 API prefix: ${API_PREFIX}`);
+  console.log(`🌍 Environment: ${env.NODE_ENV}`);
 });
 
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
-
-export { prisma };
+export { app };
